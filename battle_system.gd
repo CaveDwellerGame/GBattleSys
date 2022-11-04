@@ -11,4 +11,4 @@ const WeightedActor = preload("weighted_actor.gd");
 const BattleAction = preload("battle_action.gd");
 const BasicAttack = preload("basic_attack.gd");
 
-const StatusEffect = preload("status_effect.gd");
+const StatusEffect = preload("status/status_effect.gd");
