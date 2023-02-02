@@ -12,14 +12,14 @@ func play_turn() -> BattleAction:
 		else:
 			yield(get_tree(), "idle_frame");
 	if turn:
-		for status in get_status_effects():
+		for status in get_status_effects(true):
 			turn = status._play_turn(turn);
 	return turn;
 
 # If all actors are inactive in a team, said team loses. 
 func is_active() -> bool:
 	var res = true;
-	for status in get_status_effects():
+	for status in get_status_effects(true):
 		var result = status.call("is_crippling");
 		if result is GDScriptFunctionState:
 			result = yield(result, "completed");
@@ -30,97 +30,37 @@ func is_active() -> bool:
 		if result is GDScriptFunctionState:
 			result = yield(result, "completed");
 		res = res && result;
-	if res:
-		return !fainted;
 	return res; 
 
-var fainted = false;
-func faint():
-	if !shouldfaint():
-		return;
-		
-	fainted = true;
-	yield(get_tree(), "idle_frame");
-	for status in get_status_effects():
-		if status.has_method("_faint"):
-			var result = status.call("_faint");
-			if result is GDScriptFunctionState:
-				result = yield(result, "completed");
-			if !result:
-				return;
-	
-	if has_method("_faint"):
-		var result = call("_faint");
-		if result is GDScriptFunctionState:
-			result = yield(result, "completed");
-		if !result:
-			return;
-	
-	yield(get_tree(), "idle_frame");
-	get_parent().remove_child(self);
-	queue_free();
-	
-var health = 0;
 
-signal inflcit_health(infliction, metadata);
-func inflict_health(infliction:float, metadata:Dictionary = {}):
-	if !metadata.get("ignore_endurance", false):
-		var endurance = get_statistic('endurance', 0);
-		if infliction < 0:
-			infliction += round(clamp(rand_range(endurance - 5, endurance), 0, INF));
-			infliction = clamp(infliction, -INF, 0);
-	
-	for effect in get_status_effects():
-		effect = effect as StatusEffect;
-		var ret = effect._effect_inflic(
-			infliction, metadata);
-		if ret is GDScriptFunctionState:
-			infliction = yield(ret, "completed");
-		else:
-			infliction = ret;
-		
-	health += infliction;
-	if health > 0 && fainted:
-		revive();
-	
-	if metadata.has("actor") && infliction < 0:
-		metadata["actor"].get_parent().score += abs(infliction);
-	
-	
-	emit_signal("inflcit_health", infliction, metadata);
-	yield(get_tree().create_timer(0.7), "timeout");
-	return infliction;
-	
-func shouldfaint():
-	return self.health <= 0 && !fainted; 
-
-
-signal revived()
-func revive():
-	if !fainted:
-		return;
-	fainted = false;
-	if has_method("_revive"):
-		var result = call("_revive");
-		if result is GDScriptFunctionState:
-			result = yield(result, "completed");
-		if !result:
-			return;
-	emit_signal("revived");
-	return 0;
 
 const maximum_status_effect = 3;
 	
 # Get status Effects
-func get_status_effects() -> Array:
+func get_status_effects(base_effects = false) -> Array:
+	# Append Base Effects seperatly to prevent cap.
+	var base_effectslist = [];
+	if base_effects:
+		for effect in get_children(): 
+			if effect as StatusEffect && effect.is_base_effect():
+				base_effectslist.append(effect);
+	
+	
+	# Append regular effects.
 	var status_effects = []
-	for child in get_children():
-		if child as StatusEffect:
-			status_effects.append(child);
-			if status_effects.size() > 3:
+	for effect in get_children():
+		if effect as StatusEffect:
+			if effect.is_base_effect():
+				continue;
+			
+			status_effects.append(effect);
+			if status_effects.size() > maximum_status_effect:
 				status_effects[0].queue_free();
 				remove_child(status_effects[0]);
 				status_effects.remove(0);
+	
+	
+	status_effects.append_array(base_effectslist);
 	return status_effects;
 
 func get_base_stats():
@@ -131,13 +71,17 @@ func get_base_stats():
 		'charisma': 0, # How well actions work.
 		'strong_willed': false, # True if Boss or Player.
 	}
+export(Dictionary) var stats_override = {}
+
 
 func get_statistic(id:String, default=null) -> float:
 	var base_stats = get_base_stats();
+	base_stats.merge(stats_override, true);
+	
 	var stat = default;
 	if base_stats.has(id):
 		stat = base_stats[id];
-	for effect in get_status_effects():
+	for effect in get_status_effects(true):
 		effect = effect as StatusEffect;
 		effect._effect_stat(id, stat);
 	return stat;
@@ -145,9 +89,8 @@ func get_statistic(id:String, default=null) -> float:
 
 
 func _ready():
-	health = get_statistic("max_health", 1);
 	if get_parent().has_method("get_actor_position") && has_method("set_position"):
-		call("set_position", get_parent().get_actor_position(get_index()));
+		set("position:x", get_parent().get_actor_position(get_index()));
 		call("set_scale", Vector2.ZERO);
 		var tween = create_tween();
 		tween.tween_interval(0.2);
@@ -162,7 +105,7 @@ func post_action(action):
 		var result = call("_post_action", action);
 		if result is GDScriptFunctionState:
 			result = yield(result, "completed");
-	for status in get_status_effects():
+	for status in get_status_effects(true):
 		var result = status._post_action(action);
 		if result is GDScriptFunctionState:
 			result = yield(result, "completed");
@@ -172,7 +115,7 @@ func post_turn():
 		var result = call("_post_turn");
 		if result is GDScriptFunctionState:
 			result = yield(result, "completed");
-	for status in get_status_effects():
+	for status in get_status_effects(true):
 		var result = status._post_turn();
 		if result is GDScriptFunctionState:
 			result = yield(result, "completed");
@@ -182,7 +125,7 @@ func pre_action(action):
 		var result = call("_pre_action", action);
 		if result is GDScriptFunctionState:
 			result = yield(result, "completed");
-	for status in get_status_effects():
+	for status in get_status_effects(true):
 		var result = status._pre_action(action);
 		if result is GDScriptFunctionState:
 			result = yield(result, "completed");
@@ -192,13 +135,13 @@ func pre_turn():
 		var result = call("_pre_turn");
 		if result is GDScriptFunctionState:
 			result = yield(result, "completed");
-	for status in get_status_effects():
+	for status in get_status_effects(true):
 		var result = status._pre_turn();
 		if result is GDScriptFunctionState:
 			result = yield(result, "completed");
 
 func post_battle(battle_result):
-	for status in get_status_effects():
+	for status in get_status_effects(true):
 		var result = status._post_battle(battle_result);
 		if result is GDScriptFunctionState:
 			result = yield(result, "completed");
@@ -206,3 +149,28 @@ func post_battle(battle_result):
 		var result = call("_post_battle", battle_result);
 		if result is GDScriptFunctionState:
 			result = yield(result, "completed");
+
+#func pack() -> Dictionary:
+#	var packed_data = {
+#		"scene": filename,
+#		"stats_override": stats_override,
+#		"health": health
+#	};
+#	if has_method("_pack"):
+#		var pack = call("_pack");
+#		if pack is Dictionary:
+#			packed_data.merge(pack, true);
+#	if has_method("_pack"):
+#		var pack = call("_pack");
+#		if pack is Dictionary:
+#			packed_data.merge(pack, true);
+#
+#
+#	return packed_data;
+#
+#
+#func unpack(data:Dictionary):
+#	health = data.get("max_health", get_statistic("max_health"));
+#	if has_method("_unpack"):
+#		call("_unpack", data)
+#	return packed_data;

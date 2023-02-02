@@ -12,7 +12,7 @@ func _play_turn():
 	var choice = select_choice();
 	var action = weights.keys()[choice];
 	
-	var target_team = get_parent() if action.get_alignemnt() > 0 else \
+	var target_team = get_parent() if action.get_alignment() > 0 else \
 			get_parent().get_node(get_parent().enemy);
 	match action.get_target_type():
 		BattleAction.TargetType.TargetActor:
@@ -23,6 +23,10 @@ func _play_turn():
 					actors.erase(actor);
 			if actors.size() == 1:
 				return action.new(self, actors[0]);
+			if actors.size() <= 0:
+				return BattleAction.new(self);
+				
+				
 			return action.new(self, actors[RNG.randi() % actors.size()]);
 		BattleAction.TargetType.TargetTeam:
 			return action.new(self, target_team);

@@ -12,13 +12,13 @@ func execute():
 export(int) var priority = 0;
 enum TargetAlignment {
 	Attack = -1,
-	Neutal = 0,
-	Heal,
-	Defend,
+	Neutral = 0,
+	Defend = 1,
+	Heal = 2,
 };
 
-static func get_alignemnt():
-	return TargetAlignment.Neutal;
+static func get_alignment():
+	return TargetAlignment.Neutral;
 
 enum TargetType {
 	TargetNothing = 0,
@@ -39,21 +39,22 @@ static func get_target_type():
 static func get_target_mode():
 	return TargetMode.Alive;
 
-static func mode_applies_to_target(target:Node, mode):
+static func mode_applies_to_target(target_actor:Node, mode):
+	var life = target_actor.get_node_or_null("Life");
 	match mode:
 		TargetMode.Alive:
-			if "fainted" in target:
-				return !target.fainted;
+			if life && "fainted" in life:
+				return !life.fainted;
 			else:
 				return false;
 		TargetMode.Active:
-			if target.has_method("is_active"):
-				return target.is_active();
+			if target_actor.has_method("is_active"):
+				return target_actor.is_active();
 			else:
 				return false;
 		TargetMode.Fainted:
-			if "fainted" in target:
-				return target.fainted;
+			if life && "fainted" in life:
+				return life.fainted;
 			else:
 				return false;
 		TargetMode.All:

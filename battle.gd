@@ -3,10 +3,14 @@ extends Node
 const team = preload("team.gd");
 const actor = preload("actor.gd");
 
-signal battle_ended(winner);
-signal pre_turn;
-signal pre_action(action);
-signal post_action(action);
+
+# warning-ignore-all:unused_signal
+signal pre_battle();
+signal post_battle(winner);
+
+signal pre_turn; 
+signal pre_action(action); 
+signal post_action(action); 
 signal post_turn;
 
 func get_teams():
@@ -39,6 +43,11 @@ func play_turn():
 			return winner;
 			
 	yield(_call_event("post_turn"), "completed");
+	var sfunc = _process_faints();
+	if sfunc is GDScriptFunctionState:
+		yield(sfunc, "completed")
+	
+	
 	return null;
 
 func process_action(action):
@@ -53,7 +62,8 @@ func process_action(action):
 	
 	if action.is_valid():
 		yield(_call_event("pre_action", [action]), "completed");
-		
+	
+	if action.is_valid():
 		gdfunc = action.execute();
 		if gdfunc is GDScriptFunctionState:
 			yield(gdfunc, "completed");
@@ -76,9 +86,10 @@ func _call_event(event:String, params = []):
 	callv("emit_signal", array);
 	
 	for team in get_teams():
-		var gdfunc = team.callv(event, params);
-		if gdfunc is GDScriptFunctionState:
-			yield(gdfunc, "completed");
+		if team.has_method(event):
+			var gdfunc = team.callv(event, params);
+			if gdfunc is GDScriptFunctionState:
+				yield(gdfunc, "completed");
 	
 	if has_method("_" + event):
 		var gdfunc = callv("_" + event, params);
@@ -108,34 +119,32 @@ func battle_winner() -> team:
 	return null;
 
 export(PackedScene) var return_scene = null;
+export(bool) var auto_begin_battle = true;
+
+
 func _ready():
-	if has_method("_start_battle"):
-		var start = call("_start_battle");
-		if start is GDScriptFunctionState:
-			yield(start, "completed");
-	yield(battle_loop(), "completed");
+	if auto_begin_battle:
+		yield(battle_loop(), "completed");
 
 func battle_loop():
 	yield(get_tree(), "idle_frame");
+	
 	# Loop through until the battle ends
 	var winner = null;
-	Physics2DServer.set_active(false);
 	PhysicsServer.set_active(false);
+	get_tree().set_screen_stretch(SceneTree.STRETCH_MODE_VIEWPORT, SceneTree.STRETCH_ASPECT_KEEP, Vector2(426, 240));
+	get_viewport().set_usage(Viewport.USAGE_2D);
 	
+	yield(_call_event("pre_battle"), "completed");
 	while true:
 		winner = play_turn();
 		if winner is GDScriptFunctionState:
 			winner = yield(winner, "completed");
 		if winner != null:
 			break;
-			
-	Physics2DServer.set_active(true);
+	_call_event("post_battle", [winner]);
+	Settings.save_and_apply();
+	
+	get_viewport().set_usage(Viewport.USAGE_3D);
 	PhysicsServer.set_active(true);
 	
-	for team in get_teams():
-		var result = team.post_battle(winner);
-		if result is GDScriptFunctionState:
-			yield(result, "completed");
-	get_tree().root.set_physics_process(true);
-	emit_signal("battle_ended", winner);
-	 

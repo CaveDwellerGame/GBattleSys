@@ -63,6 +63,9 @@ func post_action(action):
 			var ret = child.post_action(action);
 			ret = yield(ret, "completed") if ret is GDScriptFunctionState else ret;
 
+func pre_battle():
+	pass
+
 func post_battle(result):
 	var rets = [];
 	for child in get_children():

@@ -24,20 +24,16 @@ const BattleAction = preload("battle_action.gd");
 
 func execute():
 	actor.get_tree().current_scene.write_text(msg);
-	yield(target.inflict_health(
+	yield(target.get_node("Life").inflict_health(
 		-max_damage,
 		{
 			"actor": actor,
 			"type": type
 		}
 	), "completed");
-	
-	if target.shouldfaint() && !target.has_method("__wait_for_faint"):
-		yield(target.faint(), "completed");
 
 
-
-static func get_alignemnt():
+static func get_alignment():
 	return BattleAction.TargetAlignment.Attack;
 	
 static func get_target_type():
