@@ -58,9 +58,10 @@ func get_status_effects(base_effects = false) -> Array:
 				status_effects[0].queue_free();
 				remove_child(status_effects[0]);
 				status_effects.remove(0);
-	
-	
 	status_effects.append_array(base_effectslist);
+	for i in range(status_effects.size() - 1, -1, -1):
+		if !status_effects[i].enabled:
+			status_effects.remove(i);
 	return status_effects;
 
 func get_base_stats():

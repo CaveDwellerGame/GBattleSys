@@ -1,5 +1,7 @@
 extends Node
 
+export(bool) var enabled = true;
+
 func is_curse():
 	return false;
 
