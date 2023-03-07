@@ -131,9 +131,6 @@ func battle_loop():
 	
 	# Loop through until the battle ends
 	var winner = null;
-	PhysicsServer.set_active(false);
-	get_tree().set_screen_stretch(SceneTree.STRETCH_MODE_VIEWPORT, SceneTree.STRETCH_ASPECT_KEEP, Vector2(426, 240));
-	get_viewport().set_usage(Viewport.USAGE_2D);
 	
 	yield(_call_event("pre_battle"), "completed");
 	while true:
@@ -143,8 +140,4 @@ func battle_loop():
 		if winner != null:
 			break;
 	_call_event("post_battle", [winner]);
-	Settings.save_and_apply();
-	
-	get_viewport().set_usage(Viewport.USAGE_3D);
-	PhysicsServer.set_active(true);
 	
