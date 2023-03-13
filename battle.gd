@@ -120,24 +120,39 @@ func battle_winner() -> team:
 
 export(PackedScene) var return_scene = null;
 export(bool) var auto_begin_battle = true;
-
+var playing_turn = false;
+var battle_state:GDScriptFunctionState = null;
 
 func _ready():
 	if auto_begin_battle:
-		yield(battle_loop(), "completed");
+		begin_battle();
+
+func begin_battle():
+	if battle_state:
+		return;
+	yield(_call_event("pre_battle"), "completed");
+	battle_state = battle_loop();
+
+func _process(delta):
+	if is_instance_valid(battle_state) && !playing_turn:
+		battle_state = battle_loop().resume();
 
 func battle_loop():
-	yield(get_tree(), "idle_frame");
-	
 	# Loop through until the battle ends
 	var winner = null;
-	
-	yield(_call_event("pre_battle"), "completed");
+	yield();
 	while true:
+		playing_turn = true
 		winner = play_turn();
 		if winner is GDScriptFunctionState:
 			winner = yield(winner, "completed");
+		else:
+			yield(get_tree(), "idle_frame");
 		if winner != null:
 			break;
+		playing_turn = false;
+		yield();
+		
 	_call_event("post_battle", [winner]);
+	return null;
 	

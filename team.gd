@@ -64,7 +64,14 @@ func post_action(action):
 			ret = yield(ret, "completed") if ret is GDScriptFunctionState else ret;
 
 func pre_battle():
-	pass
+	var rets = [];
+	for child in get_children():
+		if child.has_method("pre_battle"):
+			var ret = child.pre_battle();
+			ret = yield(ret, "completed") if ret is GDScriptFunctionState else ret;
+			if ret:
+				rets.append(ret);
+	return rets;
 
 func post_battle(result):
 	var rets = [];

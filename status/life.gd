@@ -7,7 +7,7 @@ signal inflict_health(infliction, metadata);
 var fainted = false;
 var last_infliction_data = {};
 
-export(bool) var reset_on_ready = true;
+export(bool) var reset_on_start = true;
 var health = 0;
 
 func should_faint():
@@ -15,13 +15,6 @@ func should_faint():
 
 func should_revive():
 	return health > 0 && fainted;
-
-
-func _ready():
-	if reset_on_ready:
-		fainted = false;
-		health = get_parent().get_statistic("max_health", 1);
-		last_infliction_data = {};
 
 func is_crippling():
 	return fainted;
@@ -53,7 +46,12 @@ func _pre_action(_action):
 	yield(faint_check(), "completed");
 func _post_action(_action):
 	yield(faint_check(), "completed");
-		
+
+func _pre_battle():
+	if reset_on_start:
+		fainted = false;
+		health = get_parent().get_statistic("max_health", 1);
+		last_infliction_data = {};
 		
 func faint_check():
 	yield(get_tree(), "idle_frame");

@@ -151,6 +151,16 @@ func post_battle(battle_result):
 		if result is GDScriptFunctionState:
 			result = yield(result, "completed");
 
+func pre_battle():
+	for status in get_status_effects(true):
+		var result = status._pre_battle();
+		if result is GDScriptFunctionState:
+			result = yield(result, "completed");
+	if has_method("_pre_battle"):
+		var result = call("_pre_battle");
+		if result is GDScriptFunctionState:
+			result = yield(result, "completed");
+
 #func pack() -> Dictionary:
 #	var packed_data = {
 #		"scene": filename,

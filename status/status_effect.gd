@@ -23,6 +23,9 @@ func _pre_action(_action):
 func _post_action(_action):
 	pass;
 
+func _pre_battle():
+	pass;
+
 func _post_battle(battle_result):
 	pass;
 	
